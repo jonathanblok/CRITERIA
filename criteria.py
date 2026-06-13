@@ -324,7 +324,7 @@ def ontology(dataGraph, mmdOutput, conf):
 		if date:
 			stmt = stmt.replace(date[0], '["xsd:dateTime"]')
 		if lit:
-			if 'xsd:anyURI' not in lit[0]:
+			if 'xsd:anyURI' in lit[0]:
 				stmt = stmt.replace(lit[0], '["xsd:anyURI"]')	
 			else:
 				stmt = stmt.replace(lit[0], '["xsd:string"]')	
