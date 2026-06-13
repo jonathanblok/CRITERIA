@@ -296,7 +296,7 @@ def ontology(dataGraph, mmdOutput, conf):
 		stmt = stmt.replace('(["<','([').replace('>"])','])')
 
 		date = re.findall('\(\[".*\^xsd:dateTime"]\)', stmt)
-		lit = re.findall('\(\["\'\'.*\'\'.*"]\)', stmt)
+		lit = re.findall('\(\["\'\'.*\'\'.*"]\)', stmt, re.DOTALL)
 		if date:
 			stmt = stmt.replace(date[0], '["xsd:dateTime"]')
 		elif lit:
@@ -321,14 +321,14 @@ def ontology(dataGraph, mmdOutput, conf):
 			statements.append(stmt)
 
 	for stmt in statements:
-		m = re.match('\d+(\(\[.*:.*\)) -->\|(.*)\| (\d+)(\(*\[(.*)\]\)*)', stmt)
+		m = re.match('\d+(\(\[.*:.*\)) -->\|(.*)\| (\d+)(\(*\[(.*)\]\)*)', stmt, re.DOTALL)
 		label = ''
 		if m.group(1) in uriType:
 			stmt = stmt.replace(m.group(1), uriType[m.group(1)])
 		if m.group(4) in uriType:
 			stmt = stmt.replace(m.group(4), uriType[m.group(4)])
 
-		m2 = re.match('\d+(\(*\[.*:.*\)*) -->\|(.*)\| (\d+)(\(*\[(.*)\]\)*)(.*)', stmt)
+		m2 = re.match('\d+(\(*\[.*:.*\)*) -->\|(.*)\| (\d+)(\(*\[(.*)\]\)*)(.*)', stmt, re.DOTALL)
 		mGroup1 = m.group(1).replace('"','')
 		if mGroup1 in nodeLabels and m.group(2) in nodeLabels[mGroup1]:
 			label = nodeLabels[mGroup1][m.group(2)]
