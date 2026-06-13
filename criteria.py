@@ -323,9 +323,11 @@ def ontology(dataGraph, mmdOutput, conf):
 					 
 		if date:
 			stmt = stmt.replace(date[0], '["xsd:dateTime"]')
-		if lit and 'xsd:anyURI' not in lit[0]:
-			print(f'replacing{lit[0]} with ["xsd:string"]')
-			stmt = stmt.replace(lit[0], '["xsd:string"]')	
+		if lit:
+			if 'xsd:anyURI' not in lit[0]:
+				stmt = stmt.replace(lit[0], '["xsd:anyURI"]')	
+			else:
+				stmt = stmt.replace(lit[0], '["xsd:string"]')	
 		
 		if 'rdf:type' in stmt:
 			inst = re.findall('\(\[.*:.*\)', stmt)[0] # get the uri part
