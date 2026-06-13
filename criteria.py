@@ -1,7 +1,7 @@
 import rdflib
 from rdflib import Graph, URIRef, Namespace, util, Literal
 from rdflib.util import SUFFIX_FORMAT_MAP
-from rdflib.namespace import RDFS, RDF, SDO, SKOS, SH
+from rdflib.namespace import RDFS, RDF, SDO, SKOS, SH, XSD
 import re
 import argparse
 import json
@@ -133,6 +133,7 @@ def convert(dataGraph,conf):
 	stmtList = []
 	doubleInst = [] # to check for URI with double instantiations
 	i = 0
+	generic_literal = Literal('Literal', datatype=XSD.string)
 
 	printgraph = Graph()
 
@@ -141,14 +142,18 @@ def convert(dataGraph,conf):
 		if p == RDF.type:
 			pass
 		elif type(o) == Literal:
-			if (s_type, p, Literal('Literal')) not in printgraph:
-				printgraph.add((s_type, p, Literal('Literal')))
+			found_literal = generic_literal
+			if re.match(r"http[s]:", o):
+				found_literal = Literal('xsd:anyURI')
+			if (s_type, p, found_literal) not in printgraph:
+				printgraph.add((s_type, p, found_literal))
+				print(f'adding {str(s_type)} {p} {str(found_literal)}')
 		else:
 			o_type = g.value(subject=o, predicate=RDF.type)
 			if o_type != None and (s_type, p, o_type) not in printgraph:
 				printgraph.add((s_type, p, o_type))
 			elif type(o) == URIRef and (s_type, p, o_type) not in printgraph:
-				printgraph.add((s_type, p, URIRef(o)))
+				printgraph.add((s_type, p, Literal('xsd:anyURI')))
 	
 	for s,p,o in printgraph.triples((None, None, None)):
 		p = p.n3(g.namespace_manager)
@@ -315,14 +320,12 @@ def ontology(dataGraph, mmdOutput, conf):
 
 		date = re.findall('\(\[".*\^xsd:dateTime"]\)', stmt)
 		lit = re.findall('\(\["\'\'.*\'\'.*"]\)', stmt, re.DOTALL)
-		term = re.findall('([https://.*])', stmt)
 					 
 		if date:
 			stmt = stmt.replace(date[0], '["xsd:dateTime"]')
-		elif lit:
-			stmt = stmt.replace(lit[0], '["xsd:string"]')
-		elif term:
-			stmt = stmt.replace(term[0], '["xsd:anyURI"]')
+		if lit and 'xsd:anyURI' not in lit[0]:
+			print(f'replacing{lit[0]} with ["xsd:string"]')
+			stmt = stmt.replace(lit[0], '["xsd:string"]')	
 		
 		if 'rdf:type' in stmt:
 			inst = re.findall('\(\[.*:.*\)', stmt)[0] # get the uri part
@@ -344,7 +347,7 @@ def ontology(dataGraph, mmdOutput, conf):
 			statements.append(stmt)
 
 	for stmt in statements:
-		m = re.match('\d+(\(\[.*:.*\)) -->\|(.*)\| (\d+)(\(*\[(.*)\]\)*)', stmt, re.DOTALL)
+		m = re.match('\d+(\(\[.*:.*\)) -->\|(.*)\| (\d+)(\(*\[(.*)\]\)*)', stmt)
 		label = ''
 		if m == None:
 			print(f'No match for: {stmt}')
@@ -352,8 +355,11 @@ def ontology(dataGraph, mmdOutput, conf):
 			stmt = stmt.replace(m.group(1), uriType[m.group(1)])
 		if m.group(4) in uriType:
 			stmt = stmt.replace(m.group(4), uriType[m.group(4)])
+		#elif re.match(r"\(\[http[s]:", str(m.group(4))):
+		#	stmt = stmt.replace(m.group(4), '([xsd:anyURI])')
+		
 
-		m2 = re.match('\d+(\(*\[.*:.*\)*) -->\|(.*)\| (\d+)(\(*\[(.*)\]\)*)(.*)', stmt, re.DOTALL)
+		m2 = re.match('\d+(\(*\[.*:.*\)*) -->\|(.*)\| (\d+)(\(*\[(.*)\]\)*)(.*)', stmt)
 		mGroup1 = m.group(1).replace('"','')
 		if mGroup1 in nodeLabels and m.group(2) in nodeLabels[mGroup1]:
 			label = nodeLabels[mGroup1][m.group(2)]
